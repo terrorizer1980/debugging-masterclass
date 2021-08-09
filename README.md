@@ -45,7 +45,7 @@ In this masterclass, you will learn how to:
 * Work with balenaEngine
 * Examine the Kernel logs
 * Understand media-based issues (such as SD card corruption)
-* Understand how Heartbeat/VPN Only status affects your application and device
+* Understand how Heartbeat/VPN Only status affects your devices
 
 **Note:** Whilst this masterclass is intended for new engineers about to start
     support duties at balena, it is also intended to act as an item of interest
@@ -82,11 +82,11 @@ WebTerminal in the balenaCloud Dashboard for accessing the device, but all of
 the exercises could be completed using the WebTerminal if preferred.
 
 First login to your balena account via `balena login`, and then create a new
-application:
+fleet:
 
 ```shell
-$ balena app create --type fincm3 DebugApp
-Application created: DebugApp (fincm3, id 1544229)
+$ balena fleet create --type fincm3 DebugApp
+Fleet created: unicorn/debugapp (fincm3, id 1853079)
 ```
 
 Now provision a device, either by downloading a *development* image from the
@@ -95,7 +95,7 @@ balenaEtcher must be running to enable discovery of the balenaFin from balena
 CLI):
 
 ```shell
-$ balena os download fincm3 --version 2.44.0+rev1.dev --output balena-debug.img
+$ balena os download fincm3 --version 2.80.3+rev1.dev --output balena-debug.img
 Getting device operating system for fincm3
 The image was downloaded successfully
 ```
@@ -127,7 +127,7 @@ You should now have a device that will appear as part of the DebugApp fleet:
 
 ```shell
 $ balena devices | grep DebugApp
-1744728 7db55ce black-mountain    fincm3       DebugApp         Idle   true      10.3.7             balenaOS 2.44.0+rev1 https://dashboard.balena-cloud.com/devices/7db55ce99e9c135dbc69974a7abbe511/summary
+1744728 7db55ce black-mountain    fincm3       DebugApp         Idle   true      10.3.7             balenaOS 2.80.3+rev1 https://dashboard.balena-cloud.com/devices/7db55ce99e9c135dbc69974a7abbe511/summary
 ```
 
 For convenience, export a variable to point to the root of this masterclass
@@ -137,7 +137,7 @@ repository, as we'll use this for the rest of the exercises, eg:
 $ export BALENA_DEBUGGING_MASTERCLASS=~/debugging-masterclass
 ```
 
-Finally, push the code in the `multicontainer-app` directory to the application:
+Finally, push the code in the `multicontainer-app` directory to the fleet:
 
 ```shell
 $ cd $BALENA_DEBUGGING_MASTERCLASS/multicontainer-app
@@ -158,15 +158,12 @@ A user can grant access to support agents by selecting the device from the
 Dashboard, and then selecting the 'Actions' tab in the left-hand sidepanel.
 Scrolling down the Actions page will show a list of actions, with the 'Grant
 Support Access' option being the one required here. A user can select this, then
-determine the amount of time that support agents are allowed access for. Once
-support has been granted, the Dashboard will look something like this:
+determine the amount of time that support agents are allowed access for.
 
-![Granted Support Access](https://github.com/balena-io/debugging-masterclass/blob/master/resources/black-mountain-granted.png?raw=true)
-
-**Note:** It's also possible for a user to grant support for an entire
-application by selecting the application's Dashboard page and going through
+**Note:** It's also possible for a user to grant support to an entire
+fleet by selecting the fleet's Dashboard page and going through
 the same process (selecting 'Actions' and then 'Grant Support Access'). Granting
-access to an application automatically grants access to all of its associated
+access to a fleet automatically grants access to all of its associated
 devices.
 
 Once support access has been granted, an agent will be able to use the UUID of
@@ -184,8 +181,8 @@ using `balena ssh <uuid> [serviceName]`.
 #### 1.2 Access Restrictions
 
 There are limits on what a support agent may do with a device they have
-been granted access to. This includes the alteration of service and environment
-variables and configurations (both application and device).
+been granted access to. This includes the alteration of variables and 
+configurations (both fleet and device).
 
 Whilst this sounds like a limitation, it ensures that a device being
 investigated for an issue cannot be unnecessarily altered or modified. Support
@@ -196,7 +193,7 @@ surface such that these issues are eliminated.
 ### 2. Initial Diagnosis
 
 The balenaCloud Dashboard includes the ability to run a set of diagnostics on
-a device, to determine its current condition. This should, in most cases,
+a device to determine its current condition. This should, in most cases,
 be the first step in attempting to diagnose an issue without having to
 actually access the device via SSH. Ensuring diagnostics and health checks
 are examined first ensures that a support agent has a good idea of the state a
@@ -344,8 +341,8 @@ masterclass.
 
 There are many other health checks that can immediately expose a problem.
 For example, warnings on low free memory or disk space can expose problems which
-will exhibit themselves as application updates failing to download, or service
-containers restarting abnormally (especially if an application service runs
+will exhibit themselves as release updates failing to download, or service
+containers restarting abnormally (especially if a service runs
 unchecked and consumes memory until none is left). We'll also go through some
 of these scenarios later.
 
@@ -387,13 +384,13 @@ determine its current configuration. This output is shown in two panels:
 
 * Current Supervisor State - This is the current status of the Supervisor,
     including the address and port it can be reached on, the versions pertaining
-    to it and the current application status (note that this only works should
+    to it and the current status (note that this only works should
     the VPN be operational and connected to the balenaCloud backend).
 * Target Supervisor State - This is the target state for the Supervisor, based
-    upon the release of the application the device is associated with (usually
-    this is the latest application release, unless otherwise pinned). This
+    upon the release the device is associated with (usually
+    this is the latest release, unless otherwise pinned). This
     includes all of the services, and any configuration set for each service,
-    for the application, as well as configuration (such as boot and device tree
+    for the fleet, as well as configuration (such as boot and device tree
     settings).
 
 The Supervisor state should always be available; if it isn't, this
@@ -563,7 +560,7 @@ useful being:
 * `--pager-end`/`-e` - Jump straight to the final entries for a unit.
 * `--all`/`-a` - Show all entries, even if long or with unprintable
     characters. This is especially useful for displaying the service container
-    logs from applications when applied to `balena.service`.
+    logs from user containers when applied to `balena.service`.
 
 A typical example of using `journalctl` might be following a service to see
 what's occuring. Here's it for the Supervisor, following journal entries in
@@ -637,7 +634,7 @@ you'll run `systemctl daemon-reload` and then
 `systemctl restart balena-supervisor.service` to restart the Supervisor.
 
 In general, there are some core services that need to execute for a device to
-come online, connect to the balenaCloud VPN, download applications and then run
+come online, connect to the balenaCloud VPN, download releases and then run
 them:
 
 * `chronyd.service` - Responsible for NTP duties and syncing 'real' network
@@ -645,7 +642,7 @@ them:
     `systemd-timesyncd.service` as their NTP service, although inspecting it is
     very similar to that of `chronyd.service`.
 * `dnsmasq.service` - The local DNS service which is used for all host OS
-    lookups (and is the repeater for application service containers by default).
+    lookups (and is the repeater for user service containers by default).
 * `NetworkManager.service` - The underlying Network Manager service, ensuring
     that configured connections are used for networking.
 * `os-config.service` - Retrieves settings and configs from the API endpoint,
@@ -656,11 +653,11 @@ them:
     was called `openvpn-resin.service`, but the method for inspecting and
     dealing with the service is the same.
 * `balena.service` - The balenaEngine service, the modified Docker daemon fork
-    that allows the management and running of application service images,
+    that allows the management and running of service images,
     containers, volumes and networking.
 * `balena-supervisor.service` - The balena Supervisor service, responsible for
-    the management of applications, including downloading updates for and
-    self-healing (via monitoring) of those applications, variables (application/
+    the management of releases, including downloading updates for and
+    self-healing (via monitoring) of those release services, variables (
     device/fleet) and exposure of these services to applications via an
     endpoint.
 * `dbus.service` - The DBus daemon socket can be used by applications by
@@ -694,10 +691,10 @@ may have occurred (or which services may have failed causing a reboot).
 
 To alleviate this, balenaOS allows persistent journals (logs) to be enabled by
 customers. The easiest way to achieve this is to go the the Dashboard URL for
-the application or device in question, select 'Fleet Configuration' or 'Device
+the fleet or device in question, select 'Configuration' or 'Device
 Configuration' respectively, and then select 'Activate' on 'Enable persistent
-logging'. If selected on an application, all devices associated with that
-application will have persistent journals enabled, else it will be enabled only
+logging'. If selected on a fleet, all devices associated with that
+fleet will have persistent journals enabled, else it will be enabled only
 for the device selected. Because the enabling/disabling of persistent journals
 affects where they are stored, the device will reboot once selected to ensure
 that the settings are applied.
@@ -767,7 +764,7 @@ Jan 13 11:05:20 dee2945 e374bbb9ddd4[765]: [16B blob data]
 Jan 13 11:05:20 dee2945 e374bbb9ddd4[765]: [1B blob data]
 ```
 
-If you're not examining the application's services then this output is fine, but
+If you're not examining the app's services then this output is fine, but
 usually enabling persistent logs allows us to examine what also might be
 happening in a service container that could cause an issue (for example, maybe
 the container is privileged and causing a reboot because it talks to the host
@@ -777,7 +774,7 @@ The maximum size for persistent journals is currently 32MB, and the logs are
 stored on the data partition (in balenaOS versions less than v2.45.0, the
 maximum size for journals was 8MB, and the data was held on the state partition,
 the total size of which is 20MB). This has some impact on what can be captured,
-and if an application is quite verbose, this can mean that there isn't enough
+and if a service is quite verbose, this can mean that there isn't enough
 space to store logs that might be useful. It's worth noting this, and informing
 customers of this fact so they can cut down the logging output if persistent
 logs are deemed important for issue finding.
@@ -841,7 +838,7 @@ as several different issues:
 
 * Refusal to connect to the balenaCloud VPN
 * Refusal to download configuration from the API
-* Refusal by the Supervisor to download the latest application updates
+* Refusal by the Supervisor to download the latest release
 
 Examining the status of the `chrony` service can show these symptoms, along
 with the simple `date` command:
@@ -867,7 +864,7 @@ root@f34c2e9:~#
 ```
 
 Your device should be connected, bring up the Dashboard page for the device.
-It should be 'Online' and running the pushed application code.
+It should be 'Online' and running the pushed release code.
 
 We'll demonstrate an NTP failure by making some manual changes to the date:
 
@@ -1006,7 +1003,7 @@ root@f34c2e9:~# systemctl stop chronyd.service
 root@f34c2e9:~# date -s "23 MAR 2017 12:00:00"
 ```
 
-Now from your development machine, repush the application from the
+Now from your development machine, repush the source code from the
 `multicontainer-app` directory:
 
 ```shell
@@ -1014,7 +1011,7 @@ $ balena push DebugApp
 ```
 
 Once the build has completed, the device should try and download the updated
-application. However, you'll notice that the download doesn't start and
+release. However, you'll notice that the download doesn't start and
 no changes are made. The Dashboard stays static. Why is this? Well as you've
 probably guessed, it's for the same reasons that the VPN connection doesn't
 work. Run the following on your device:
@@ -1040,8 +1037,8 @@ Mar 23 12:04:31 f34c2e9 balena-supervisor[1830]: [error]   Failed to get target 
 
 As you can see, the certificate is again not valid as the current device time
 does not fall within the validity window, and so the Supervisor won't pull the
-updated application. If we restart chrony, this will be rectified and the
-Supervisor will, after a short delay, update the application:
+latest release. If we restart chrony, this will be rectified and the
+Supervisor will, after a short delay, start the update:
 
 ```shell
 root@f34c2e9:~# systemctl start chronyd.service
@@ -1096,7 +1093,7 @@ that connection.
 
 For this reason, DNS is vital in the reliable operation of a balena device as it
 provides the ability to lookup `*.balena-cloud.com` hostnames to allow the
-download of applications, reporting the device state, connection to the VPN,
+download of releases, reporting the device state, connection to the VPN,
 etc.
 
 DNS is provided by the `dnsmasq.service` unit, which uses a default
@@ -1105,7 +1102,7 @@ in `/etc/resolv.dnsmasq`. This itself is derived from the
 `/var/run/resolvconf/interface/NetworkManager` file.
 
 The DNSMasq service runs at local address `127.0.0.2`. This is used, because
-it allows customer application services to provide their own DNS if required
+it allows customer services to provide their own DNS if required
 and therefore does not clash with them.
 
 By default, the external name servers used are the Google primary and secondary
@@ -1257,7 +1254,7 @@ balena VPN. This include various data such as the device status, actions,
 SSH access, public URLs etc.
 
 Initially, the `os-config.service` unit requests a block of configuration data
-from the API, once the device has been registered against the application. Let's
+from the API, once the device has been registered against the fleet. Let's
 have a look at the journal output from a device that's been freshly provisioned
 and started for the first time:
 
@@ -1496,7 +1493,7 @@ network requirements are satisfied:
 * Ensure that DNS is working (again a `curl` to the API endpoint will show if
     name resolution is working or not)
 * Ensure that the registry endpoint is not blocked. This will exhibit as the
-    Supervisor being unable to instruct balenaEngine to pull an application's
+    Supervisor being unable to instruct balenaEngine to pull a release's
     service images. A manual attempt at `balena pull <imageDetails>` should
     allow you to see whether any connection is made, or whether it timeouts/
     disconnects.
@@ -1564,9 +1561,9 @@ exit the device's SSH connection until the configuration *is* correct. Doing so
 may result in the device becoming inaccessible.
 
 A balenaOS image, by default, does not include any configuration information
-to associate it with an application. When a customer downloads a provisioning
+to associate it with a fleet. When a customer downloads a provisioning
 image from the Dashboard, balenaCloud injects the configuration for the specific
-application the image is being downloaded for. Similarly, the balena CLI allows
+fleet the image is being downloaded for. Similarly, the balena CLI allows
 the download of a balenaOS image for a device type (and specific version), but
 requires that this image has a configuration added (usually via the use of
 `balena os configure`) before flashing to bootable media.
@@ -1612,10 +1609,10 @@ root@dee2945:~# cat /resin-boot/config.json
 ```
 
 As you can see, there's very little information in the configuration file in
-the `/resin-boot` directory, and certainly nothing that associates it with an
-application. On the other hand, if we look at `/mnt/boot/config.json` you can
+the `/resin-boot` directory, and certainly nothing that associates it with a
+fleet. On the other hand, if we look at `/mnt/boot/config.json` you can
 see that all the required information for the device to be associated with its
-application exists:
+fleet exists:
 
 ```shell
 root@dee2945:~# cat /mnt/boot/config.json | jq
@@ -1645,8 +1642,10 @@ root@dee2945:~# cat /mnt/boot/config.json | jq
 }
 ```
 
-you can see that all the required information for the device to be associated
-with its application exists.
+__Note__: Key naming in `config.json` stil adheres to the "legacy" convention of 
+balenaCloud applications instead of fleets. For details see
+[this](https://www.balena.io/blog/the-road-to-multi-app-transitioning-balenacloud-applications-to-fleets/)
+blog post.
 
 There's a fairly easy way to remember which is the right place, the root FS
 is read-only, so if you try and modify the `config.json` you'll be told it's
@@ -1726,8 +1725,8 @@ which includes all the properties applicable.
 Service: `balena-supervisor.service`
 
 The balena Supervisor is the service that carries out the management of the
-application on a device, including determining when to download updates,
-the changing of device/environment variables, ensuring application services
+software release on a device, including determining when to download updates,
+the changing of variables, ensuring services
 are restarted correctly, etc. It is, in effect, the on-device agent for
 balenaCloud.
 
@@ -1736,10 +1735,10 @@ times, even when a device is not connected via the Internet, as it still
 ensures the running of a device that is offline.
 
 The Supervisor itself is a Docker service that runs alongside any installed
-application services and the healthcheck container (more on that later). One
+user services and the healthcheck container (more on that later). One
 major advantage of running it as a Docker service is that it can be updated
 just like any other service (although actually carrying that out is slightly
-different to updating an application, see 'Updating the Supervisor').
+different to updating user containers, see 'Updating the Supervisor').
 
 Assuming you're still logged into your development device, run the following:
 
@@ -1786,11 +1785,11 @@ are:
     restarting, it's worth ensuring it's not because the container itself is
     exiting correctly either due to a bug in the service container code or
     because it has correctly come to the end of its running process.
-* Staged releases - An application/device has been pinned to a particular
+* Staged releases - A fleet/device has been pinned to a particular
     version, and a new push is not being downloaded.
 
 It's *always* worth considering how the system is configured, how releases were
-produced, how the application or device is configured and what the current
+produced, how the fleet or device is configured and what the current
 networking state is when investigating Supervisor issues, to ensure that there
 isn't something else amiss that the Supervisor is merely exposing via logging.
 
@@ -1898,7 +1897,7 @@ You can additionally write a script to manage this for a fleet of devices in com
 
 The Supervisor uses a SQLite database to store persistent state (so in the
 case of going offline, or a reboot, it knows exactly what state an
-application should be in, and which images, containers, volumes and networks
+app should be in, and which images, containers, volumes and networks
 to apply to it).
 
 This database is located at
@@ -2010,10 +2009,10 @@ Database { open: true, filename: '/data/database.sqlite', mode: 65542 }
 ```
 
 Occasionally, should the Supervisor get into a state where it is unable to
-determine which application images it should be downloading or running, it
+determine which release images it should be downloading or running, it
 is necessary to clear the database. This usually goes hand-in-hand with removing
 the current containers and putting the Supervisor into a 'first boot' state,
-whilst keeping the Supervisor and application images. This can be achieved by
+whilst keeping the Supervisor and release images. This can be achieved by
 carrying out the following:
 
 ```shell
@@ -2042,7 +2041,7 @@ root@dee2945:~# systemctl start update-balena-supervisor.timer balena-supervisor
 (If you deleted all the images, this will first download the Supervisor image
 again before restarting it).
 At this point, the Supervisor will start up as if the device has just been
-provisioned (though it will already be registered), and the application will
+provisioned (though it will already be registered), and the release will
 be freshly downloaded (if the images were removed) before starting the service
 containers.
 
@@ -2054,7 +2053,7 @@ balenaEngine is balena's fork of Docker, offering a range of added features
 including real delta downloads, minimal disk writes (for improved media wear)
 and other benefits for edge devices, in a small resource footprint.
 
-balenaEngine is responsible for the fetching and storage of application service
+balenaEngine is responsible for the fetching and storage of service
 images, as well as their execution as service containers, the creation of
 defined networks and creation and storage of persistent data to service volumes.
 As such, it is an extremely important part of balenaOS.
@@ -2068,7 +2067,7 @@ tempting to attribute them to balenaEngine instead of the actual underlying
 issue. A couple of examples
 of issues which are misattributed to :
 
-* Failure to download application service updates - usually because there is an
+* Failure to download release service updates - usually because there is an
     underlying network problem, or possibly issues with free space
 * Failure to start service containers - most commonly customer services exit
     abnormally (or don't have appropriate error checking) although a full
@@ -2098,8 +2097,8 @@ logs to its own service output. This comes in particularly useful if you need to
 examine the journal, because it will show both balenaEngine and Supervisor
 output in the same logs chronologically.
 
-Assuming your device is still running the pushed multicontainer application,
-we can also see additionally logging for all the application service containers.
+Assuming your device is still running the pushed multicontainer app,
+we can also see additionally logging for all the service containers.
 To do so, we'll restart balenaEngine, so that the services are started again:
 
 ```shell
@@ -2898,7 +2897,7 @@ a later section dealing with media storage. However, we will show an example
 here of creating a writeable layer in a container and finding it in the
 appropriate `/var/lib/docker` directory.
 
-Assuming you're running the application that goes along with this masterclass,
+Assuming you're running the source code that goes along with this masterclass,
 SSH into your device:
 
 ```shell
@@ -3225,9 +3224,9 @@ of free space on a device, or that of SD card corruption.
 
 A media partition that is full can cause issues such as the following:
 
-* Failure to download application updates, or failure to start new/updated
+* Failure to download release updates, or failure to start new/updated
     services after a download has occurred
-* Failure for an application to store data into defined volumes
+* Failure for a service to store data into defined volumes
 * Failure of services to start up (mostly those that need to store data that
     isn't in `tmpfs`)
 
@@ -3258,7 +3257,7 @@ The `-h` switch makes the figures returned 'human readable'. Without this switch
 the returned figures will be in block sizes (usually 1k or 512byte blocks).
 
 The two main mounts where full space problems commonly occur are `/mnt/data` and
-`/mnt/state`. The former is the data partition where all application images, containers
+`/mnt/state`. The former is the data partition where all service images, containers
 and volumes are stored. The latter is the state partition, where overlays for the
 root FS (such as user defined network configuraions) and the permanent logs
 are stored.
@@ -3305,7 +3304,7 @@ customers should be asked to enter the relevant services and manually prune
 data.
 
 Before discussion on persistent data, it's worth noting that occasionally
-customer applications store data to the service container instead of a
+customer apps store data to the service container instead of a
 persistent data volume. Sometimes, this data is intended as temporary, so doing
 so is not an issue (although if they are doing so and expecting it to stay
 permanent, this will not occur as service container rebuilds will remove the
@@ -3326,7 +3325,7 @@ Data volumes are always located in the `/var/lib/docker/volumes` directory. Care
 needs to be taken to ensure the right volumes are examine/pruned of data, as
 not all volumes pertain directly to customer data.
 
-In single service applications, the relevant data volume is suffixed with the
+In single service apps, the relevant data volume is suffixed with the
 `_resin-data` string. For example:
 
 ```shell
@@ -3355,9 +3354,9 @@ saved onto that partition. The bound volume uses the directory transparently,
 so any data saved there by the service is immediately available on the host
 OS.
 
-In multicontainer applications, the suffix always corresponds with the name
+In multicontainer apps, the suffix always corresponds with the name
 of the bound volume. For example, let's look at the docker-compose manifest
-for the `multicontainer-app` application used in this debugging masterclass:
+for the `multicontainer-app` app used in this debugging masterclass:
 
 ```yaml
 version: '2.1'
@@ -3379,7 +3378,7 @@ services:
 
 As you can see, a `backend-data` volume is defined, and then used by the
 `backend` service. Assuming your device is still running the multicontainer
-application for this masterclass, SSH into the device, and then examine the
+app for this masterclass, SSH into the device, and then examine the
 running services:
 
 ```shell
@@ -3418,7 +3417,7 @@ any type of flash memory based storage includes a shorter lifespan compared to
 media such as platter drives). Initially, media corruption and wearing exhibit
 'random' signs, including but not limited to:
 
-* Application updates failing to download/start/stop.
+* Release updates failing to download/start/stop.
 * Services suddenly restarting.
 * Devices not being mapped to device nodes.
 * Extreme lag when interacting with services/utilities from the CLI.
@@ -3469,9 +3468,9 @@ A device with a Heartbeat Only status has internet connectivity and can poll the
 
 A device with a VPN Only status is not able to apply any new changes made such as deploying new releases, applying service configuration values, or switching to local mode. However, it is accessible via SSH or the web terminal. Performing an action such as rebooting or restarting containers might work, but most likely will not. This is because the device loses its Heartbeat if it's not communicating with the API, which is usually when the Supervisor on the device is not running or crashing. Since we have VPN access, we can SSH into the device and investigate further.
 
-#### 12.3 What do these states mean for my application ?
+#### 12.3 What do these states mean for my app ?
 
-A device can be Heartbeat or VPN Only and still have full internet access, which means your applications may be deployed and continuing to run without interruption. However, in the case of VPN Only, future updates will not be deployed until the Supervisor on the device is fixed.
+A device can be Heartbeat or VPN Only and still have full internet access, which means your app may be deployed and continuing to run without interruption. However, in the case of VPN Only, future updates will not be deployed until the Supervisor on the device is fixed.
 
 ## Conclusion
 
@@ -3491,4 +3490,4 @@ support agent. You should now be confident enough to:
 * Understand the balenaEngine's role, including key concepts.
 * Be able to look at kernel logs, and determine some common faults.
 * Work with media issues, including dealing with full media, working with customer data, and diagnosing corruption issues.
-* Understand why your device's status is Online (Heartbeat Only) or Online (VPN Only) and how it can be impacting your application.
+* Understand why your device's status is Online (Heartbeat Only) or Online (VPN Only) and how it can be impacting your app.

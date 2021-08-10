@@ -403,7 +403,7 @@ be required).
 
 The Target State is extremely useful for ensuring that a release is running
 correctly upon a device (as the `docker-compose` manifest for the release
-can be read from the application's 'Release' page in the Dashboard), as well
+can be read from the fleet's 'Release' page in the Dashboard), as well
 as ensuring it's the commit that's expected.
 
 ### 3. Device Access Responsibilities
@@ -419,7 +419,7 @@ destructive when supporting a customer:
 * Always ask permission before carrying out non-read actions. This includes
     situations such as stopping/restarting/starting services which are otherwise
     functional (such as the Supervisor). This is *especially* important in cases
-    where this would stop otherwise functioning applications (such as stopping
+    where this would stop otherwise functioning services (such as stopping
     balenaEngine).
 * Ensure that the customer is appraised of any non-trivial non-read actions that
     you are going to take before you carry those actions out on-device. If they
@@ -658,12 +658,11 @@ them:
 * `balena-supervisor.service` - The balena Supervisor service, responsible for
     the management of releases, including downloading updates for and
     self-healing (via monitoring) of those release services, variables (
-    device/fleet) and exposure of these services to applications via an
-    endpoint.
-* `dbus.service` - The DBus daemon socket can be used by applications by
-    applying the `io.balena.features.dbus` label, which exposes it in-container.
-    This allows applications to control several host OS features, including the
-    Network Manager.
+    device/fleet) and exposure of these services to apps via an endpoint.
+* `dbus.service` - The DBus daemon socket can be used by services if the 
+    `io.balena.features.dbus` label is applied. This exposes the DBus daemon 
+    socket in the container which allows the service to control several 
+    host OS features, including the Network Manager.
 
 Additionally, there are some utility services that, whilst not required
 for a barebones operation, are also useful:
@@ -796,10 +795,9 @@ and in brief, include:
 * Access to 8.8.8.8 and 8.8.4.4 for DNS resolution (although this is
     configurable via the `dnsServers` setting in `config.json`).
 
-Additionally, customer applications themselves may have networking requirements
-which may not be met. For example, a customer's application may need to send
-data to a server, but the server is offline and unreachable, and maybe the
-application isn't designed to handle these failures.
+Additionally, services running on the device themselves may have networking requirements
+which may not be met. For example, a service may need to send data to a server, but the 
+server is offline and unreachable, and maybe the service isn't designed to handle these failures.
 
 In general,
 [debugging networking](https://github.com/balena-io/networking-masterclass/)
@@ -1473,10 +1471,10 @@ true for SSL traffic (on port 443).
 
 This can sometimes include traffic to a customer's cloud service. For example,
 imagine that all the balena requirements are met, so that the device appears
-to be operating normally, but a customer complains that their application seems
+to be operating normally, but a customer complains that their device seems
 to not be able to contact their own cloud servers. It could be that the firewall
 lets through all the traffic required by balena, but is blocking other arbitrary
-ports, which might include the ports required by an application on the device.
+ports, which might include the ports required by a service on the device.
 
 These are all points which a support engineer should be aware of when
 investigating a device that is showing abnormal behavior which might be related
@@ -1643,9 +1641,7 @@ root@dee2945:~# cat /mnt/boot/config.json | jq
 ```
 
 __Note__: Key naming in `config.json` stil adheres to the "legacy" convention of 
-balenaCloud applications instead of fleets. For details see
-[this](https://www.balena.io/blog/the-road-to-multi-app-transitioning-balenacloud-applications-to-fleets/)
-blog post.
+balenaCloud applications instead of fleets. For details, refer to the [blog post](https://www.balena.io/blog/the-road-to-multi-app-transitioning-balenacloud-applications-to-fleets/).
 
 There's a fairly easy way to remember which is the right place, the root FS
 is read-only, so if you try and modify the `config.json` you'll be told it's

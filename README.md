@@ -655,10 +655,10 @@ them:
 * `balena.service` - The balenaEngine service, the modified Docker daemon fork
     that allows the management and running of service images,
     containers, volumes and networking.
-* `balena-supervisor.service` - The balena Supervisor service, responsible for
-    the management of releases, including downloading updates for and
-    self-healing (via monitoring) of those release services, variables (
-    device/fleet) and exposure of these services to apps via an endpoint.
+* `balena-supervisor.service` - The {{ $names.company.short }} Supervisor service, 
+    responsible for the management of releases, including downloading updates for and 
+    self-healing (via monitoring), variables (fleet/device), and exposure of these 
+    services to fleets via an API endpoint.
 * `dbus.service` - The DBus daemon socket can be used by services if the 
     `io.balena.features.dbus` label is applied. This exposes the DBus daemon 
     socket in the container which allows the service to control several 
